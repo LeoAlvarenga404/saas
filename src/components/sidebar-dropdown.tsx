@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Circle, CircleDot } from "lucide-react";
 
 import {
   SidebarGroup,
@@ -73,13 +73,11 @@ export function SidebarDropdown({
                   >
                     <Link to={item.url} className="text-[0.8rem]">
                       <div>
-                        <item.Icon
-                          className={` ${
-                            item.isActive
-                              ? "text-white w-3"
-                              : "text-muted-foreground w-2"
-                          }`}
-                        />
+                        {item.isActive ? (
+                          <CircleDot className="text-white w-3" />
+                        ) : (
+                          <Circle className="text-muted-foreground w-2" />
+                        )}
                       </div>
                       <p
                         className={`text-sm ${
