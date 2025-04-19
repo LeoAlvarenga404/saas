@@ -43,7 +43,6 @@ export function LoginForm({
     }
   };
 
-
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }

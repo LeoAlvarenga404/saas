@@ -1,6 +1,7 @@
 import api from "@/services/api";
 import { authService } from "@/services/auth";
 import { createContext, useContext, useEffect, useState } from "react";
+
 interface AuthContextType {
   isAuthenticated: boolean;
   accessToken: string | null;

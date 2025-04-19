@@ -25,13 +25,16 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useUser } from "@/contexts/user-context";
+import { useAuth } from "@/contexts/auth-context";
 
 export function Profile() {
   const { isMobile } = useSidebar();
-
+  const userInfo = useUser();
+  const { logout } = useAuth();
   const user = {
-    name: "Leonardo Prado",
-    email: "leonardo.alvarenga@anchieta.br",
+    name: userInfo.user?.name,
+    email: userInfo.user?.email,
     avatar: "https://github.com/LeoAlvarenga404.png",
   };
 
@@ -96,7 +99,7 @@ export function Profile() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={logout}>
               <LogOut />
               Log out
             </DropdownMenuItem>
