@@ -8,16 +8,16 @@ import Layout from "@/layout";
 import { Home } from "@/pages/Home";
 import { StockControl } from "@/pages/stock-control";
 import { SignIn } from "@/pages/auth/sign-in";
-import { AuthProvider } from "@/contexts/auth-context";
+import { ForgotPassword } from "@/pages/auth/forgot-password";
 import { ProtectedRoute } from "@/components/(auth)/protected-route";
 
 export default function AppRoute() {
   return (
-    <AuthProvider>
       <Router>
         <Routes>
           {/* Rotas públicas */}
           <Route path="/login" element={<SignIn />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Rotas privada */}
           <Route element={<ProtectedRoute />}>
@@ -42,6 +42,5 @@ export default function AppRoute() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
-    </AuthProvider>
   );
 }

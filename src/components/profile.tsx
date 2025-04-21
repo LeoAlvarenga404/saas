@@ -25,12 +25,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useUser } from "@/contexts/user-context";
 import { useAuth } from "@/contexts/auth-context";
 
 export function Profile() {
   const { isMobile } = useSidebar();
-  const userInfo = useUser();
+  const userInfo = useAuth();
   const { logout } = useAuth();
   const user = {
     name: userInfo.user?.name,

@@ -3,122 +3,180 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { Eye, EyeClosed } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { LoginFormData, loginSchema } from "@/schemas/login-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useAuth } from "@/contexts/auth-context";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"form">) {
-  const [visible, setVisible] = useState<boolean>(false);
-  const { login, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const { isAuthenticated, login } = useAuth();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    setError: setFormError,
+    setError,
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
   const handleLogin = async (data: LoginFormData) => {
+    if (loading) return;
     setLoading(true);
     try {
       await login(data.email, data.password);
       navigate("/");
-    } catch (err) {
-      console.error(err);
-      setFormError("root", {
+    } catch {
+      setError("root", {
         type: "manual",
         message: "Invalid email or password",
       });
+    } finally {
       setLoading(false);
     }
   };
 
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
+  if (isAuthenticated) return <Navigate to="/" replace />;
+
   return (
     <form
-      className={cn("flex flex-col gap-6", className)}
+      className={cn("space-y-6", className)}
       {...props}
       onSubmit={handleSubmit(handleLogin)}
     >
-      <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-bold">Login to your business account</h1>
-        <p className="text-balance text-sm text-muted-foreground">
-          Enter your email below to login to your account
-        </p>
-      </div>
-      <div className="grid gap-6">
-        <div className="grid gap-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="email@example.com"
-            required
-            {...register("email")}
-          />
+      {errors.root && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{errors.root.message}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-sm font-medium">
+            Email
+          </Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="email"
+              type="email"
+              placeholder="name@company.com"
+              className={cn(
+                "pl-10",
+                errors.email &&
+                  "border-destructive focus-visible:ring-destructive/20"
+              )}
+              {...register("email")}
+              disabled={loading}
+            />
+          </div>
           {errors.email && (
-            <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+            <p className="text-destructive text-sm font-medium">
+              {errors.email.message}
+            </p>
           )}
         </div>
-        <div className="grid gap-2">
-          <div className="flex items-center">
-            <Label htmlFor="password">Password</Label>
-            <a
-              href="#"
-              className="ml-auto text-sm underline-offset-4 hover:underline"
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-sm font-medium">
+              Password
+            </Label>
+            <Link
+              to="/forgot-password"
+              className="text-xs font-medium text-primary hover:underline"
             >
-              Forgot your password?
-            </a>
+              Forgot password?
+            </Link>
           </div>
-          <div className=" flex items-center">
-            <div className="w-full flex-col">
-              <div className="relative flex items-center">
-                <Input
-                  id="password"
-                  type={visible ? "text" : "password"}
-                  required
-                  {...register("password")}
-                  className=""
-                />
-                <button
-                  onClick={() => setVisible(!visible)}
-                  type="button"
-                  className="absolute right-2 cursor-pointer"
-                >
-                  {visible ? (
-                    <EyeClosed className="text-muted-foreground" />
-                  ) : (
-                    <Eye className="text-muted-foreground" />
-                  )}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.password.message}
-                </p>
+          <div className="relative">
+            <LockKeyhole className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="password"
+              type={visible ? "text" : "password"}
+              className={cn(
+                "pl-10",
+                errors.password &&
+                  "border-destructive focus-visible:ring-destructive/20"
               )}
-            </div>
+              placeholder="••••••••"
+              {...register("password")}
+              disabled={loading}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute right-0 top-0 h-9 w-9 px-0"
+              onClick={() => setVisible((prev) => !prev)}
+              tabIndex={-1}
+            >
+              {visible ? (
+                <EyeOff className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className="sr-only">
+                {visible ? "Hide password" : "Show password"}
+              </span>
+            </Button>
           </div>
+          {errors.password && (
+            <p className="text-destructive text-sm font-medium">
+              {errors.password.message}
+            </p>
+          )}
         </div>
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full cursor-pointer"
-        >
-          {loading ? "Loading..." : "Login"}
-        </Button>
+      </div>
+
+      <Button type="submit" disabled={loading} className="w-full font-medium">
+        {loading ? (
+          <>
+            <svg
+              className="mr-2 h-4 w-4 animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            Signing in...
+          </>
+        ) : (
+          "Sign in"
+        )}
+      </Button>
+
+      <div className="mt-6 text-center text-sm">
+        <span className="text-muted-foreground">
+          New to the platform?{" "}
+          <Link to="#" className="text-primary font-medium hover:underline">
+            Contact your administrator
+          </Link>
+        </span>
       </div>
     </form>
   );

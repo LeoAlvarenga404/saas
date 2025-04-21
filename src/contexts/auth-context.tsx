@@ -1,68 +1,102 @@
+import { createContext, useContext, useEffect, useState } from "react";
+import Cookies from "js-cookie";
+import { jwtDecode } from "jwt-decode";
 import api from "@/services/api";
 import { authService } from "@/services/auth";
-import { createContext, useContext, useEffect, useState } from "react";
+
+interface User {
+  userId: number;
+  enterpriseId: number;
+  roleId: number;
+  isMaster: boolean;
+  name?: string;
+  email?: string;
+}
 
 interface AuthContextType {
+  user: User | null;
   isAuthenticated: boolean;
-  accessToken: string | null;
+  loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>(null!);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const isAuthenticated = !!user;
 
-  const isAuthenticated = !!accessToken;
+  const loadUserFromToken = (token: string): User | null => {
+    try {
+      const decoded = jwtDecode<{
+        sub: number;
+        enterprise_id: number;
+        role_id: number;
+        is_master: boolean;
+        name?: string;
+        email?: string;
+      }>(token);
+
+      return {
+        userId: decoded.sub,
+        enterpriseId: decoded.enterprise_id,
+        roleId: decoded.role_id,
+        isMaster: decoded.is_master,
+        name: decoded.name,
+        email: decoded.email,
+      };
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const initializeAuth = async () => {
       try {
-        const response = await api.post("/auth/refresh");
-        setAccessToken(response.data.accessToken);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const token = Cookies.get("accessToken");
+
+        if (token) {
+          const userData = loadUserFromToken(token);
+          if (userData) {
+            setUser(userData);
+            api.defaults.headers.common.Authorization = `Bearer ${token}`;
+          }
+        }
       } catch (error) {
-        setAccessToken(null);
+        console.error("Failed to initialize auth", error);
       } finally {
         setLoading(false);
       }
     };
 
-    checkAuth();
+    initializeAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
     const { accessToken } = await authService.login(email, password);
-    setAccessToken(accessToken);
+    Cookies.set("accessToken", accessToken);
+    const userData = loadUserFromToken(accessToken);
+    setUser(userData);
+    api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
   };
 
   const logout = () => {
     try {
       authService.logout();
     } finally {
-      setAccessToken(null);
+      Cookies.remove("accessToken");
+      Cookies.remove("refreshToken");
+      setUser(null);
+      delete api.defaults.headers.common.Authorization;
+      window.location.href = "/login";
     }
   };
 
-  useEffect(() => {
-    const interceptor = api.interceptors.request.use((config) => {
-      if (accessToken) {
-        config.headers.Authorization = `Bearer ${accessToken}`;
-      }
-      return config;
-    });
-
-    return () => {
-      api.interceptors.request.eject(interceptor);
-    };
-  }, [accessToken]);
-
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, accessToken, login, logout, loading }}
+      value={{ user, isAuthenticated, loading, login, logout }}
     >
       {children}
     </AuthContext.Provider>

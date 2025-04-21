@@ -5,68 +5,58 @@ const api = axios.create({
   withCredentials: true,
 });
 
-type QueuedRequest = {
+type FailedRequest = {
   resolve: (value: unknown) => void;
   reject: (reason?: unknown) => void;
   config: AxiosRequestConfig;
 };
 
-let isRefreshing = false;
-let failedRequestsQueue: QueuedRequest[] = [];
+let refreshing = false;
+let requestQueue: FailedRequest[] = [];
 
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config;
+    const originalConfig = error.config;
 
-    // Se não for erro 401 ou já tentou refresh, rejeita normalmente
-    if (error.response?.status !== 401 || !originalRequest) {
+    if (!originalConfig) return Promise.reject(error);
+
+    const bypassRoutes = ["/auth/login", "/auth/register", "/auth/refresh"];
+
+    if (
+      error.response?.status !== 401 ||
+      bypassRoutes.includes(originalConfig.url || "")
+    ) {
       return Promise.reject(error);
     }
 
-    // Se for requisição de refresh, rejeita para evitar loop
-    if (originalRequest.url === "/auth/refresh") {
-      return Promise.reject(error);
-    }
-
-    // Se já está fazendo refresh, coloca na fila
-    if (isRefreshing) {
+    if (refreshing) {
       return new Promise((resolve, reject) => {
-        failedRequestsQueue.push({
-          resolve,
-          reject,
-          config: originalRequest,
-        });
+        requestQueue.push({ resolve, reject, config: originalConfig });
       });
     }
 
-    isRefreshing = true;
+    refreshing = true;
 
     try {
-      // Tenta renovar o token com pequeno delay
       await new Promise((resolve) => setTimeout(resolve, 1000));
       await api.post("/auth/refresh");
 
-      // Reprocessa todas as requisições na fila
-      failedRequestsQueue.map(({ config, resolve }) =>
+      requestQueue.forEach(({ config, resolve }) => {
         api(config)
           .then(resolve)
-          .catch(() => {})
-      );
+          .catch(() => {});
+      });
 
-      failedRequestsQueue = [];
+      requestQueue = [];
 
-      // Retorna a requisição original
-      return api(originalRequest);
-    } catch (refreshError) {
-      // Se falhar, rejeita todas as requisições na fila
-      failedRequestsQueue.forEach(({ reject }) => reject(refreshError));
-      failedRequestsQueue = [];
-
-      // Faz logout e redireciona
-      return Promise.reject(refreshError);
+      return api(originalConfig);
+    } catch (err) {
+      requestQueue.forEach(({ reject }) => reject(err));
+      requestQueue = [];
+      return Promise.reject(err);
     } finally {
-      isRefreshing = false;
+      refreshing = false;
     }
   }
 );
